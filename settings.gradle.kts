@@ -23,3 +23,5 @@ rootProject.name = "NewsSearchAppRozov"
 include(":app")
 include(":newsapi")
 include(":database")
+include(":features:news-main")
+include(":news-data")
