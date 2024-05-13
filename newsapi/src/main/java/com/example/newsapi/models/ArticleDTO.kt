@@ -19,8 +19,8 @@ import java.util.Date
  * "content": "[Removed]"
  */
 @Serializable
-data class Article(
-    @SerialName("source") val source: Source,
+data class ArticleDTO(
+    @SerialName("source") val source: SourceDTO,
     @SerialName("author") val author: String,
     @SerialName("title") val title: String,
     @SerialName("description") val description: String,
