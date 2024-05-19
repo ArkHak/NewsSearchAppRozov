@@ -26,18 +26,7 @@ class ArticlesRepository(
     ): Flow<RequestResult<List<Article>>> {
 
         val cachedAllArticles: Flow<RequestResult<List<Article>>> = getAllFromDatabase()
-            .map { result ->
-                result.map { articlesDbos ->
-                    articlesDbos.map { it.toArticle() }
-                }
-            }
-
         val remoteArticles: Flow<RequestResult<List<Article>>> = getAllFromServer()
-            .map { result ->
-                result.map { response ->
-                    response.articles.map { it.toArticle() }
-                }
-            }
 
         return cachedAllArticles.combine(remoteArticles, mergeStrategy::merge)
             .flatMapConcat { result ->
@@ -52,18 +41,22 @@ class ArticlesRepository(
 
     }
 
-    private fun getAllFromDatabase(): Flow<RequestResult<List<ArticleDBO>>> {
+    private fun getAllFromDatabase(): Flow<RequestResult<List<Article>>> {
         val dbRequest = database.articlesDao::getAll.asFlow()
             .map { RequestResult.Success(it) }
         val start = flowOf<RequestResult<List<ArticleDBO>>>(RequestResult.InProgress())
-        return merge(start, dbRequest)
+        return merge(start, dbRequest).map { result ->
+            result.map { articlesDbos ->
+                articlesDbos.map { it.toArticle() }
+            }
+        }
     }
 
-    private fun getAllFromServer(): Flow<RequestResult<ResponseDTO<ArticleDTO>>> {
+    private fun getAllFromServer(): Flow<RequestResult<List<Article>>> {
         val apiRequest = flow { emit(api.everything()) }
             .onEach { result ->
                 if (result.isSuccess) {
-                    saveResponseToCache(checkNotNull(result.getOrNull()).articles)
+                    saveResponseToCache(result.getOrThrow().articles)
                 }
             }
             .map { it.toRequestResult() }
@@ -71,6 +64,11 @@ class ArticlesRepository(
         val start = flowOf<RequestResult<ResponseDTO<ArticleDTO>>>(RequestResult.InProgress())
 
         return merge(apiRequest, start)
+            .map { result ->
+                result.map { response ->
+                    response.articles.map { it.toArticle() }
+                }
+            }
     }
 
     private suspend fun saveResponseToCache(data: List<ArticleDTO>) {
@@ -82,4 +80,5 @@ class ArticlesRepository(
         api.everything()
         TODO("Not implemented")
     }
+
 }
